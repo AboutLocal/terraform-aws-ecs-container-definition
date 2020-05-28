@@ -8,20 +8,34 @@ locals {
   env_vars_values      = [for m in local.env_vars : lookup(m, "value")]
   env_vars_as_map      = zipmap(local.env_vars_keys, local.env_vars_values)
   sorted_env_vars_keys = sort(local.env_vars_keys)
-    sorted_environment_vars = [
+  sorted_environment_vars = [
     for key in local.sorted_env_vars_keys :
     {
       name  = key
       value = lookup(local.env_vars_as_map, key)
     }
   ]
-
   # This strange-looking variable is needed because terraform (currently) does not support explicit `null` in ternary operator,
   # so this does not work: final_environment_vars = length(local.sorted_environment_vars) > 0 ? local.sorted_environment_vars : null
-  null_value = var.environment == null ? var.environment : null
-
+  env_null_value = var.environment == null ? var.environment : null
   # https://www.terraform.io/docs/configuration/expressions.html#null
-  final_environment_vars = length(local.sorted_environment_vars) > 0 ? local.sorted_environment_vars : local.null_value
+  
+  final_environment_vars = length(local.sorted_environment_vars) > 0 ? local.sorted_environment_vars : local.env_null_value
+  # Sort secerts  so terraform will not try to recreate on each plan/apply
+  secrets             = var.secrets != null ? var.secrets : []
+  secrets_keys        = [for m in local.secrets : lookup(m, "name")]
+  secrets_values      = [for m in local.secrets : lookup(m, "valueFrom")]
+  secrets_as_map      = zipmap(local.secrets_keys, local.secrets_values)
+  sorted_secrets_keys = sort(local.secrets_keys)
+  sorted_secrets_vars = [
+  for key in local.sorted_secrets_keys :
+  {
+    name  = key
+    value = lookup(local.secrets_as_map, key)
+  }
+  ]
+  # https://www.terraform.io/docs/configuration/expressions.html#null
+  final_secrets = length(local.sorted_secrets_vars) > 0 ? local.sorted_secrets_vars : []
 
   container_definition = {
     name                   = var.container_name
@@ -52,7 +66,7 @@ locals {
     cpu                    = var.container_cpu
     environment            = local.final_environment_vars
     environmentFiles       = var.environment_files
-    secrets                = var.secrets
+    secrets                = local.final_secrets
     dockerLabels           = var.docker_labels
     startTimeout           = var.start_timeout
     stopTimeout            = var.stop_timeout
