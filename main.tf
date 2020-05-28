@@ -34,11 +34,8 @@ locals {
     value = lookup(local.secrets_as_map, key)
   }
   ]
-  # This strange-looking variable is needed because terraform (currently) does not support explicit `null` in ternary operator,
-  # so this does not work: final_secrets_vars = length(local.sorted_secrets_vars) > 0 ? local.sorted_secrets_vars : null
-  secrets_null_value = var.secrets == null ? var.secrets : null
   # https://www.terraform.io/docs/configuration/expressions.html#null
-  final_secrets = length(local.sorted_secrets_vars) > 0 ? local.sorted_secrets_vars : local.secrets_null_value
+  final_secrets = length(local.sorted_secrets_vars) > 0 ? local.sorted_secrets_vars : []
 
   container_definition = {
     name                   = var.container_name
