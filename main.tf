@@ -31,7 +31,7 @@ locals {
   for key in local.sorted_secrets_keys :
   {
     name  = key
-    value = lookup(local.secrets_as_map, key)
+    valueFrom = lookup(local.secrets_as_map, key)
   }
   ]
   # https://www.terraform.io/docs/configuration/expressions.html#null
