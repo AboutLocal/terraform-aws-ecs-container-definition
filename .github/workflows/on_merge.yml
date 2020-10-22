@@ -17,20 +17,38 @@ jobs:
       - name: Get version
         run: |
           echo "::set-env name=VERSION::$(grep -v "#" VERSION)"
-      - name: Create Release
-      id: create_release
-      # the official create-release only supports releasing to master
-      # however we sometimes want a release pointing at a different ref
-      # since actions/create-release is not maintained, we have to use
-      # this third party one
-      uses: fleskesvor/create-release@feature/support-target-commitish
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ env.VERSION }}
-        release_name: Release ${{ env.VERSION }}
-        body: ''
-        draft: false
-        prerelease: false
-        # this is needed for committing to branches that are not master
-        commitish: ${{ env.commitish }}
+      # we have to check if the version already exists. if yes, we don't want to
+      # create a release. the create_release action will fail anyway if the to
+      # be released version already exists, but it's not a very verbose error
+      - name: Check if version has already been released
+        run: |
+          VERSION_EXISTS=1
+          # the checkout action does not fetch tags per default
+          git fetch --all --tags
+          # note: grep -q returns 1 if the value is not found. this fails the
+          # step in github actions. so we use an || to set an env in that case
+          git tag | grep -q ${{ env.VERSION }} || VERSION_EXISTS=0
+          if [[ $VERSION_EXISTS -eq 1 ]]; then
+            echo "Version ${{ env.VERSION }} already exists. Skipping."
+          else
+            echo "Version ${{ env.VERSION }} does not exist. Creating new release."
+          fi
+          echo "::set-env name=VERSION_EXISTS::$VERSION_EXISTS"
+      - if: env.VERSION_EXISTS == '0'
+        name: Create Release
+        id: create_release
+        # the official create-release only supports releasing to master
+        # however we sometimes want a release pointing at a different ref
+        # since actions/create-release is not maintained, we have to use
+        # this third party one
+        uses: fleskesvor/create-release@feature/support-target-commitish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
+          body: ''
+          draft: false
+          prerelease: false
+          # this is needed for committing to branches that are not master
+          commitish: ${{ env.commitish }}
