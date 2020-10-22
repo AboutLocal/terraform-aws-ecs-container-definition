@@ -1,6 +1,4 @@
-terraform {
-  experiments = [variable_validation]## For can
-}
+
 locals {
   # Sort environment variables so terraform will not try to recreate on each plan/apply
   env_vars             = var.environment != null ? var.environment : []
@@ -19,7 +17,7 @@ locals {
   # so this does not work: final_environment_vars = length(local.sorted_environment_vars) > 0 ? local.sorted_environment_vars : null
   env_null_value = var.environment == null ? var.environment : null
   # https://www.terraform.io/docs/configuration/expressions.html#null
-  
+
   final_environment_vars = length(local.sorted_environment_vars) > 0 ? local.sorted_environment_vars : local.env_null_value
   # Sort secerts  so terraform will not try to recreate on each plan/apply
   secrets             = var.secrets != null ? var.secrets : []
@@ -28,11 +26,11 @@ locals {
   secrets_as_map      = zipmap(local.secrets_keys, local.secrets_values)
   sorted_secrets_keys = sort(local.secrets_keys)
   sorted_secrets_vars = [
-  for key in local.sorted_secrets_keys :
-  {
-    name  = key
-    valueFrom = lookup(local.secrets_as_map, key)
-  }
+    for key in local.sorted_secrets_keys :
+    {
+      name      = key
+      valueFrom = lookup(local.secrets_as_map, key)
+    }
   ]
   # https://www.terraform.io/docs/configuration/expressions.html#null
   final_secrets = length(local.sorted_secrets_vars) > 0 ? local.sorted_secrets_vars : []
