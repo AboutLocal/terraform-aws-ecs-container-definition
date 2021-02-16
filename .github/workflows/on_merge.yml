@@ -16,7 +16,7 @@ jobs:
           ref: ${{ env.GITHUB_REF }}
       - name: Get version
         run: |
-          echo "::set-env name=VERSION::$(grep -v "#" VERSION)"
+          echo "VERSION=$(grep -v "#" VERSION)" >> $GITHUB_ENV
       # we have to check if the version already exists. if yes, we don't want to
       # create a release. the create_release action will fail anyway if the to
       # be released version already exists, but it's not a very verbose error
@@ -33,7 +33,7 @@ jobs:
           else
             echo "Version ${{ env.VERSION }} does not exist. Creating new release."
           fi
-          echo "::set-env name=VERSION_EXISTS::$VERSION_EXISTS"
+          echo "VERSION_EXISTS=$VERSION_EXISTS" >> $GITHUB_ENV
       - if: env.VERSION_EXISTS == '0'
         name: Create Release
         id: create_release

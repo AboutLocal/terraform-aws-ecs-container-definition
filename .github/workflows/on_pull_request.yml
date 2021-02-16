@@ -5,6 +5,7 @@ on:
 jobs:
   lint:
     name: 'tflint'
+    if: github.head_ref != 'cicd-scripts'
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout'
@@ -19,3 +20,40 @@ jobs:
       - name: 'run tflint'
         run: |
           ./tflint
+  test:
+    name: 'unit tests'
+    if: github.head_ref != 'cicd-scripts'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+      - name: 'check if tests exist'
+        run: |
+          RUN_TESTS=1
+          if [[ ! -d test ]]; then
+            echo "No unit tests defined."
+            RUN_TESTS=0
+          else
+            echo "unit tests found, proceeding"
+          fi
+          echo "RUN_TESTS=$RUN_TESTS" >> $GITHUB_ENV
+      # TODO: go mod init takes a long time. maybe we can do it with a lambda and pull go.sum from s3
+      - name: 'install terratest'
+        if: env.RUN_TESTS == '1'
+        run: |
+          cd test
+          if [[ ! -f go.mod ]] || [[ ! -f go.sum ]]; then
+            go mod init ${{ env.REPO }}
+          fi
+          go get github.com/gruntwork-io/terratest
+          go get github.com/stretchr/testify
+        env:
+          REPO: github.repository
+      - name: 'run tests'
+        if: env.RUN_TESTS == '1'
+        run: |
+          cd test
+          go test -v -timeout 30m -parallel 10
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.UNIT_TEST_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UNIT_TEST_AWS_SECRET_ACCESS_KEY }}
